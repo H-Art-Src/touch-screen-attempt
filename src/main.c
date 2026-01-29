@@ -11,6 +11,7 @@ fail if DT_NODELABEL(gpio0) isn't present in the generated devicetree.
 #include <zephyr/devicetree.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/sys/printk.h>
+#include <dk_buttons_and_leds.h>
 
 #define PIN_XP 2   /* P0.02 - X+ */
 #define PIN_XM 3   /* P0.03 - X- */
@@ -123,12 +124,12 @@ int main(void)
         bool touched = sample_touch(gpio0);
 
         if (touched) {
-            gpio_pin_set(gpio0, PIN_LED, 1);
+			dk_set_led(DK_LED1, 1);
             k_msleep(150);
-            gpio_pin_set(gpio0, PIN_LED, 0);
+			dk_set_led(DK_LED1, 0);
             k_msleep(150);
         } else {
-            gpio_pin_set(gpio0, PIN_LED, 0);
+			dk_set_led(DK_LED1, 0);
             k_msleep(SLEEP_MS);
         }
     }
