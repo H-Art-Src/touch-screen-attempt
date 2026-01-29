@@ -193,6 +193,19 @@ static void button_changed(uint32_t button_state, uint32_t has_changed)
 		bt_lbs_send_button_state(user_button_state);
 		app_button_state = user_button_state ? true : false;
 	}
+
+	static const struct device *gpio_dev = DEVICE_DT_GET(DT_NODELABEL(gpio0));
+	if (!device_is_ready(gpio_dev))
+	{ 	
+		dk_set_led(DK_LED4, 1);
+	}
+	gpio_pin_set(gpio_dev, 27, 1);
+	dk_set_led(DK_LED1, DK_BTN1_MSK & button_state);
+	dk_set_led(DK_LED2, DK_BTN2_MSK & button_state);
+	dk_set_led(DK_LED3, DK_BTN3_MSK & button_state);
+	dk_set_led(DK_LED4, DK_BTN4_MSK & button_state);
+	k_msleep(500);
+	gpio_pin_set(gpio_dev, 27, 0);
 }
 
 static int init_button(void)
