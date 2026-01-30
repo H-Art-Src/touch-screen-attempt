@@ -27,15 +27,16 @@ Notes:
 #include <zephyr/sys/util.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <dk_buttons_and_leds.h>
-
 
 /* Change these if you wire to different pins */
 #define PIN_XP 2   /* P0.02 - X+ */
 #define PIN_XM 3   /* P0.03 - X- */
 #define PIN_YP 4   /* P0.04 - Y+ */
 #define PIN_YM 5   /* P0.05 - Y- */
-#define PIN_LED 13 /* P0.13 - LED (adjust if different) */
+
+/* Use P0.13 as LED (common on nRF52 DK boards). If your board uses a
+   different pin, change this define or add a project overlay. */
+#define PIN_LED 13 /* P0.13 - LED */
 
 #define SLEEP_MS 50
 #define DEBOUNCE_SAMPLES 5
@@ -146,7 +147,7 @@ static int configure_drive_and_sense(const struct device *gpio)
 /* sample_touch now prints pin attributes (value + PIN_CNF decode) and returns touch present */
 static bool sample_touch(const struct device *gpio)
 {
-	printk("\033c");
+    printk("\033c");
     /* Print current attributes for all relevant pins first */
     print_pin_attributes(gpio, PIN_XP, "X+");
     print_pin_attributes(gpio, PIN_XM, "X-");
@@ -187,6 +188,7 @@ int main(void)
         return 1;
     }
 
+    /* Configure LED pin on gpio0 at runtime to avoid DT macro issues */
     int rc = gpio_pin_configure(gpio0, PIN_LED, GPIO_OUTPUT_INACTIVE);
     if (rc) {
         printk("Failed to configure LED pin (%d)\n", rc);
@@ -199,7 +201,7 @@ int main(void)
         return 3;
     }
 
-    printk("Touch detector started (pins: X+=%d X-=%d Y+=%d Y-=%d LED=%d)\n",
+    printk("Touch detector started (pins: X+=%d X-=%d Y+=%d Y-=%d LED=%d on gpio0)\n",
            PIN_XP, PIN_XM, PIN_YP, PIN_YM, PIN_LED);
 
     /* Main loop: sample and print attributes each cycle. Reduce frequency if too chatty. */
@@ -207,12 +209,12 @@ int main(void)
         bool touched = sample_touch(gpio0);
 
         if (touched) {
-			dk_set_led(DK_LED1, 1);
+            gpio_pin_set(gpio0, PIN_LED, 1);
             k_msleep(150);
-			dk_set_led(DK_LED1, 0);
+            gpio_pin_set(gpio0, PIN_LED, 0);
             k_msleep(150);
         } else {
-			dk_set_led(DK_LED1, 0);
+            gpio_pin_set(gpio0, PIN_LED, 0);
             k_msleep(SLEEP_MS);
         }
     }
