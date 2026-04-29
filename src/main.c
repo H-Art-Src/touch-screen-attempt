@@ -8,8 +8,69 @@
 #include <stdint.h>
 #include <dk_buttons_and_leds.h>
 
+#define SW0_NODE DT_ALIAS(sw0)
+#define SW1_NODE DT_ALIAS(sw1)
+#define SW2_NODE DT_ALIAS(sw2)
+#define SW3_NODE DT_ALIAS(sw3)
+
+static const struct gpio_dt_spec buttons[] = {
+	GPIO_DT_SPEC_GET_OR(SW0_NODE, gpios, {0}),
+	GPIO_DT_SPEC_GET_OR(SW1_NODE, gpios, {0}),
+	GPIO_DT_SPEC_GET_OR(SW2_NODE, gpios, {0}),
+	GPIO_DT_SPEC_GET_OR(SW3_NODE, gpios, {0}),
+};
+
+static struct gpio_callback button_cb_data[4];
+
+static void flip_coins()
+{
+	int random = k_cycle_get_32() % 16;
+	for (int i = 0; i < 4; i++) {
+		dk_set_led(i, 1 & (random >> i));
+	}
+}
+
+static void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
+{
+	for (int i = 0; i < 4; i++) {
+		if (buttons[i].port == dev) {
+			switch (i) {
+				case 0:
+					flip_coins();
+					break;
+				case 1:
+					for (int j = 0; j < 4; j++) {
+						dk_set_led(j, 1);
+					}
+					break;
+				case 2:
+					for (int j = 0; j < 4; j++) {
+						dk_set_led(j, 0);
+					}
+					break;
+				case 3:
+					for (int j = 0; j < 4; j++) {
+						dk_set_led(j, 1 - dk_get_led(j));
+					}
+					break;
+			}
+			return;
+		}
+	}
+}
+
 int main(void)
 {
 	dk_leds_init();
-    dk_set_led(DK_LED4, 1);
+
+	for (int i = 0; i < 4; i++) {
+		gpio_pin_configure_dt(&buttons[i], GPIO_INPUT);
+		gpio_pin_interrupt_configure_dt(&buttons[i], GPIO_INT_EDGE_TO_ACTIVE);
+		gpio_init_callback(&button_cb_data[i], button_pressed, BIT(buttons[i].pin));
+		gpio_add_callback(buttons[i].port, &button_cb_data[i]);
+	}
+
+	while (1) {
+		k_sleep(K_MSEC(1000));
+	}
 }
