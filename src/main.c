@@ -21,6 +21,7 @@ static const struct gpio_dt_spec buttons[] = {
 };
 
 static struct gpio_callback button_cb_data[4];
+int mode = 0;
 
 static void flip_coins()
 {
@@ -33,30 +34,33 @@ static void flip_coins()
 static void button_pressed(const struct device *dev, struct gpio_callback *cb, uint32_t pins)
 {
 	for (int i = 0; i < 4; i++) {
-		if (buttons[i].port == dev) {
-			switch (i) {
-				case 0:
-					flip_coins();
-					break;
-				case 1:
-					for (int j = 0; j < 4; j++) {
-						dk_set_led(j, 1);
-					}
-					break;
-				case 2:
-					for (int j = 0; j < 4; j++) {
-						dk_set_led(j, 0);
-					}
-					break;
-				case 3:
-					for (int j = 0; j < 4; j++) {
-						dk_set_led(j, 1 - dk_get_led(j));
-					}
-					break;
-			}
-			return;
-		}
-	}
+        const struct gpio_dt_spec *spec = &buttons[i];
+        if (spec->port == NULL) {
+            continue; /* alias not present / unused entry */
+        }
+
+        if (spec->port != dev) {
+            continue; /* different GPIO port */
+        }
+
+        /* safe to compute mask now */
+        const uint32_t mask = BIT(spec->pin);
+        if ((pins & mask) == 0) {
+            continue; /* this pin didn't trigger */
+        }
+        switch (i) {
+            case 0:
+                flip_coins();
+                break;
+            case 3:
+                for (int j = 0; j < 4; j++) {
+                    dk_set_led(j, j % 2);
+                }
+                break;
+        }
+        mode = i;
+        return;
+    }
 }
 
 int main(void)
@@ -71,6 +75,11 @@ int main(void)
 	}
 
 	while (1) {
-		k_sleep(K_MSEC(1000));
+        if (mode == 2)
+            k_sleep(K_MSEC(1000 * (k_cycle_get_32() % 10)));
+        else
+		    k_sleep(K_MSEC(1000));
+        if(mode == 1 || mode == 2)
+            flip_coins();
 	}
 }
